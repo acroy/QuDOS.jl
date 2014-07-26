@@ -12,7 +12,7 @@ The following functions include their own licenses:
 
 expmv
 =====
-The function expmv is a Julia implementation of the routine expmv which is
+The function expmv is a Julia implementation of the routine expv which is
 part of EXPOKIT (see http://www.maths.uq.edu.au/expokit) authored by
 Roger B. Sidje <rbs@maths.uq.edu.au>.
 
