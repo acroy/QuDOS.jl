@@ -6,7 +6,7 @@
 module QuDOS
 
 # exports
-export QuStateVec, QuState
+export AbstractQuState, QuStateVec, QuState
 
 export QuFixedStepPropagator,
 			 QuKrylovPropagator
