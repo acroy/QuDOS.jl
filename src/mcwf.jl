@@ -1,7 +1,51 @@
+
+# quantum state as an ensemble of pure states
+type QuStateEnsemble{S<:AbstractQuState}
+  state::S
+  decomp
+  QuStateEnsemble{S}(rho::S, d) = new(rho, d)
+end
+
+function QuStateEnsemble{S<:AbstractQuState}(rho::S, d)
+  return QuStateEnsemble{S}(rho, d)
+end
+
+function QuStateEnsemble(rho::QuState)
+  println("QuStateEnsemble{QuState}")
+  QuStateEnsemble(rho, eigfact(reshape(full(rho.elem), rho.nb, rho.nb)))
+end
+
+function QuStateEnsemble(psi::QuStateVec)
+  println("QuStateEnsemble{QuStateVec}")
+  QuStateEnsemble(psi, nothing)
+end
+
+# for a mixed state we use the spectral decomposition
+function draw(e::QuStateEnsemble{QuState})
+  println("draw from QuStateEnsemble{QuState}")
+
+  r = rand() # draw random number from [0,1)
+  pacc = 0.
+  for i=1:length(e.decomp[:values])
+    pacc = pacc + e.decomp[:values][i]
+    if pacc >= r
+      return QuStateVec(reshape(complex(e.decomp[:vectors][:,i]), e.state.nb,1), e.state.subnb)
+    end
+  end
+end
+
+# for a pure state drawing is easy
+function draw(e::QuStateEnsemble{QuStateVec})
+  println("draw from QuStateEnsemble{QuStateVec}")
+
+  return copy(e.state)
+end
+
+
 # MCWF method
 #
 # inputs: qme::AbstractLindbladQME
-#         psi0::QuStateVec
+#         state::AbstractQuState - initial state
 #         ntraj::Int    - number of trajectories
 #         dt0::Float64  - time-step
 #         nsteps::Int   - number of time-steps
@@ -11,7 +55,7 @@
 #          exvals       - nsteps*nops matrix with expectation values
 #                         for each time-step and each op in ops
 #
-function mcwfpropagate(psi0::QuStateVec,
+function mcwfpropagate(state::AbstractQuState,
                         qme::AbstractLindbladQME,
                         ntraj::Int, dt0::Float64, nsteps::Int,
                         ops=[])
@@ -29,13 +73,19 @@ function mcwfpropagate(psi0::QuStateVec,
   heff = eff_hamiltonian(qme)
   c = linbladops(qme)
 
-  rho = QuState( zeros(Complex128, psi0.nb, psi0.nb), psi0.subnb )
+  # final state
+  rho = QuState( zeros(Complex128, state.nb, state.nb), state.subnb )
+
+  # initial state -> ensemble
+  qse = QuStateEnsemble(state)
 
   for traj=1:ntraj
 	  println("starting trajectory $traj/$ntraj")
 
-	  eps = rand() # draw random number from [0,1)
-	  psi  = copy(psi0)
+    # initial state vec for trajectory
+	  psi  = draw(qse)
+
+    eps = rand() # draw random number from [0,1)
 
 	  for step=1:nsteps
 
@@ -70,7 +120,8 @@ function mcwfpropagate(psi0::QuStateVec,
     			end
 
     			# now we have a jump
-    			psi = QuStateVec( cop*psi1.elem )
+    			# psi = QuStateVec( cop*psi1.elem )
+          psi = applyop(psi1, cop)
     			normalize!(psi)
 
     			eps = rand() # draw new random number from [0,1)
@@ -81,7 +132,6 @@ function mcwfpropagate(psi0::QuStateVec,
     			dt = dt/2		# jump in the current interval
     		else
     			psi = copy(psi1)  # no jump
-    			psi = psi1			  # no jump
     			accdt = accdt + dt
     			dt = dt0 - accdt
     		end
