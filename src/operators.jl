@@ -9,7 +9,7 @@
 #
 function creationop( nb::Int )
 
-	sparse( [2:nb], [1:nb], sqrt(linspace( 1, nb-1, nb-1)), nb, nb )
+	sparse( [2:nb], [1:nb-1], sqrt(linspace( 1, nb-1, nb-1)), nb, nb )
 
 end
 
