@@ -3,7 +3,7 @@
 type QuStateEnsemble{S<:AbstractQuState}
   state::S
   decomp
-  QuStateEnsemble{S}(rho::S, d) = new(rho, d)
+  QuStateEnsemble(rho::S, d) = new(rho, d)
 end
 
 function QuStateEnsemble{S<:AbstractQuState}(rho::S, d)
@@ -21,7 +21,7 @@ function QuStateEnsemble(psi::QuStateVec)
 end
 
 # for a mixed state we use the spectral decomposition
-function draw(e::QuStateEnsemble{QuState})
+function draw{C<:AbstractArray{Complex128,1}}(e::QuStateEnsemble{QuState{C}})
   println("draw from QuStateEnsemble{QuState}")
 
   r = rand() # draw random number from [0,1)
@@ -29,13 +29,13 @@ function draw(e::QuStateEnsemble{QuState})
   for i=1:length(e.decomp[:values])
     pacc = pacc + e.decomp[:values][i]
     if pacc >= r
-      return QuStateVec(reshape(complex(e.decomp[:vectors][:,i]), e.state.nb,1), e.state.subnb)
+      return QuStateVec(complex(e.decomp[:vectors][:,i]), e.state.subnb)
     end
   end
 end
 
 # for a pure state drawing is easy
-function draw(e::QuStateEnsemble{QuStateVec})
+function draw{C<:AbstractArray{Complex128,1}}(e::QuStateEnsemble{QuStateVec{C}})
   println("draw from QuStateEnsemble{QuStateVec}")
 
   return copy(e.state)
@@ -119,8 +119,8 @@ function mcwfpropagate(state::AbstractQuState,
     				end
     			end
 
-    			# now we have a jump
-    			# psi = QuStateVec( cop*psi1.elem )
+          # now we have a jump
+          # psi = QuStateVec( cop*psi1.elem )
           psi = applyop(psi1, cop)
     			normalize!(psi)
 
