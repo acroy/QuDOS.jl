@@ -3,6 +3,7 @@
 type QuStateEnsemble{S<:AbstractQuState}
   state::S
   decomp
+
   QuStateEnsemble(rho::S, d) = new(rho, d)
 end
 

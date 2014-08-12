@@ -146,7 +146,7 @@ function +(rho1::QuState, rho2::QuState)
 		error("Quantum states are not compatible and cannot be added.")
 	end
 
-	QuState( (rho1.elem+rho2.elem), copy(rho1.subnb) )
+	QuState( reshape(rho1.elem+rho2.elem,rho1.nb,rho1.nb),copy(rho1.subnb) )
 end
 
 function -(vec1::QuStateVec, vec2::QuStateVec)
