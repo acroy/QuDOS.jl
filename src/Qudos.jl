@@ -13,7 +13,7 @@ export QuFixedStepPropagator,
 
 export propagate
 
-export LindbladQME
+export LindbladQME, mcsolve
 
 export stationary, superop, eff_hamiltonian
 
@@ -422,5 +422,8 @@ include("qme.jl")
 
 # MCWF method (aka quantum jump)
 include("mcwf.jl")
+
+# mcsolve method for MCWF (similar to the QuTIP's mcsolve function)
+include("mcsolve.jl")
 
 end # module

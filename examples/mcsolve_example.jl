@@ -1,4 +1,4 @@
-# quantum dynamics of a damped harmonic oscillator
+# Quantum dynamics of a damped harmonic oscillator using the mcsolve.jl.
 using QuDOS
 import Winston: plot, oplot, xlabel, ylabel
 
@@ -8,10 +8,10 @@ gamma = 0.1
 nsteps = 50
 dt = 0.25
 
-ntraj = 5	# number of trajectories
+ntraj = 10	# number of trajectories
 
 # initialize operators etc
-ad = QuDOS.creationop( n ) # This is an error here.
+ad = QuDOS.creationop( n )
 h = ad*ad'
 
 x = QuDOS.positionop( n )
@@ -42,14 +42,17 @@ pex[1] = real(QuDOS.expectationval(rho, p))
 # 	xex[step+1] = real(QuDOS.expectationval(rho, x))
 # 	pex[step+1] = real(QuDOS.expectationval(rho, p))
 # end
+tlist=[1:nsteps]*dt
+measms = Array(AbstractMatrix{Complex128},2)
+measms[1]=complex(x)
+measms[2]=complex(p)
+exvals = QuDOS.mcsolve(qme, cs, tlist, measms, ntraj)
 
-rho, exvals = QuDOS.mcwfpropagate(cs, qme, ntraj, dt, nsteps, {x, p})
-
-xex[2:end] = real(exvals[:,1])
-pex[2:end] = real(exvals[:,2])
+xex[2:end] = real(exvals[1,1,:])
+pex[2:end] = real(exvals[1,2,:])
 
 # plots results using Winston
-plot(dt*[0:nsteps], xex, "b-", dt*[0:nsteps], pex, "r-")
+plot([0,tlist], xex, "b-", [0,tlist], pex, "r-")
 oplot(dt*[0:0.5:nsteps], sqrt(2.)*exp(-(gamma/2.)*dt*[0:0.5:nsteps]),"k--")
 oplot(dt*[0:0.5:nsteps],-sqrt(2.)*exp(-(gamma/2.)*dt*[0:0.5:nsteps]),"k--")
 
