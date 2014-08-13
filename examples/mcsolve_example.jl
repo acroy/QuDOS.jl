@@ -8,7 +8,7 @@ gamma = 0.1
 nsteps = 50
 dt = 0.25
 
-ntraj = 10	# number of trajectories
+ntraj = 100	# number of trajectories
 
 # initialize operators etc
 ad = QuDOS.creationop( n )
@@ -53,8 +53,8 @@ pex[2:end] = real(exvals[1,2,:])
 
 # plots results using Winston
 plot([0,tlist], xex, "b-", [0,tlist], pex, "r-")
-oplot(dt*[0:0.5:nsteps], sqrt(2.)*exp(-(gamma/2.)*dt*[0:0.5:nsteps]),"k--")
-oplot(dt*[0:0.5:nsteps],-sqrt(2.)*exp(-(gamma/2.)*dt*[0:0.5:nsteps]),"k--")
+oplot(dt*[0:0.5:nsteps], sqrt(2.)*exp(-(gamma)*dt*[0:0.5:nsteps]),"k--") # Should the decay rate be Gamma or Gamma/2.0?
+oplot(dt*[0:0.5:nsteps],-sqrt(2.)*exp(-(gamma)*dt*[0:0.5:nsteps]),"k--") # Should the decay rate be Gamma or Gamma/2.0?
 
 xlabel("time")
 ylabel("\\langle x\\rangle (blue) and \\langle p\\rangle (red)")
