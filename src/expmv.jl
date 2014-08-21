@@ -23,9 +23,9 @@
 # The work resulting from EXPOKIT has been published in ACM-Transactions
 # on Mathematical Software, 24(1):130-156, 1998.
 #
-expmv{T}( vec::Vector{T}, t::Real, amat::AbstractMatrix, tol::Real=1e-7, m::Int=min(30,size(amat,1))) = expmv!(copy(vec), t, amat, tol, m)
+expmv{T}( vec::Vector{T}, t::Number, amat::AbstractMatrix, tol::Real=1e-7, m::Int=min(30,size(amat,1))) = expmv!(copy(vec), t, amat, tol, m)
 
-function expmv!{T}( vec::Vector{T}, t::Real, amat::AbstractMatrix, tol::Real=1e-7, m::Int=min(30,size(amat,1)))
+function expmv!{T}( vec::Vector{T}, t::Number, amat::AbstractMatrix, tol::Real=1e-7, m::Int=min(30,size(amat,1)))
 
 	if size(vec,1) != size(amat,2)
 		error("dimension mismatch")
@@ -53,7 +53,7 @@ function expmv!{T}( vec::Vector{T}, t::Real, amat::AbstractMatrix, tol::Real=1e-
 
 	tf = abs(t)
 	tsgn = sign(t)
-	tk = zero(t)
+	tk = zero(tf)
 
 	v = vec
 	mx = m
