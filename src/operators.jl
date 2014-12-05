@@ -78,8 +78,8 @@ function lindbladsuperop( h::AbstractMatrix, c )
 			for i=1:nb
 				for j=1:nb
 
-					sm = (m-1)*nb + n
-					sj = (i-1)*nb + j
+					sm = (n-1)*nb + m
+					sj = (j-1)*nb + i
 
 					lv = zero(Complex128)
 					for l=1:nlop
@@ -123,11 +123,11 @@ function plindbladsuperop( h::AbstractMatrix, c )
   # using several processes, each process returns a part of the Linblad matrix
 	splb = @parallel (+) for m=1:nb
 
-	    SI = Array(Int,0)
-	    SJ = Array(Int,0)
-	    Lvals = Array(Complex128,0)
+		SI = Array(Int,0)
+		SJ = Array(Int,0)
+	  Lvals = Array(Complex128,0)
 
-            for n=1:nb
+    for n=1:nb
 			for i=1:nb
 				for j=1:nb
 
@@ -144,8 +144,8 @@ function plindbladsuperop( h::AbstractMatrix, c )
 					end
 
 					if real(lv)!=0 || imag(lv)!=0
-					    sm = (m-1)*nb + n
-					    sj = (i-1)*nb + j
+							sm = (n-1)*nb + m
+							sj = (j-1)*nb + i
 
 					    push!(SI, sm)
 					    push!(SJ, sj)
@@ -194,8 +194,8 @@ function sylvsuperop( h::AbstractMatrix, c )
         lv = -im*h[m,i] - heff[m,i]
 
         if real(lv)!=0 || imag(lv)!=0
-          sm = (m-1)*nb + n
-          sj = (i-1)*nb + j
+					sm = (n-1)*nb + m
+					sj = (j-1)*nb + i
 
           push!(SI, sm)
           push!(SJ, sj)
@@ -208,8 +208,8 @@ function sylvsuperop( h::AbstractMatrix, c )
         lv = im*h[j,n] - heff[j,n]
 
         if real(lv)!=0 || imag(lv)!=0
-          sm = (m-1)*nb + n
-          sj = (i-1)*nb + j
+					sm = (n-1)*nb + m
+					sj = (j-1)*nb + i
 
           push!(SI, sm)
           push!(SJ, sj)

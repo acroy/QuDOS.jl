@@ -6,7 +6,7 @@
 module QuDOS
 
 # exports
-export QuStateVec, QuState
+export AbstractQuState, QuStateVec, QuState
 
 export QuFixedStepPropagator,
 			 QuKrylovPropagator
@@ -60,17 +60,17 @@ include("operators.jl")
 # state types
 abstract AbstractQuState
 
-type QuStateVec <: AbstractQuState
-	elem::AbstractMatrix{Complex128}
+type QuStateVec{C<:AbstractArray{Complex128,1}} <: AbstractQuState
+	elem::C							 # container for coefficients
 	nb::Int							 # (total) number of basis functions
 	subnb::Vector{Int} 	 # number of basis functions in each
 												# subspace
 
-	function QuStateVec( elem::AbstractMatrix{Complex128}, subnb::Vector{Int} )
+	function QuStateVec( elem::C, subnb::Vector{Int} )
 		nb = size(elem,1) # size of basis
-	    if size(elem,2) != 1
-	        error("expected column vector, got #dim2=$(size(elem,2))")
-	    end
+    if size(elem,2) != 1
+        error("expected column vector, got #dim2=$(size(elem,2))")
+    end
 		if prod(subnb) != nb
 			error("subspace size mismatch")
 		end
@@ -80,34 +80,37 @@ type QuStateVec <: AbstractQuState
 
 end
 
-QuStateVec( elem::AbstractMatrix{Complex128} ) = QuStateVec(elem, [size(elem,1)])
+QuStateVec{C<:AbstractArray{Complex128,1}}( elem::C, subnb::Vector{Int} ) = QuStateVec{C}(elem, subnb)
+QuStateVec{C<:AbstractArray{Complex128,1}}( elem::C ) = QuStateVec{C}(elem, [size(elem,1)])
 
-type QuState <: AbstractQuState
-	elem::AbstractMatrix{Complex128}
+type QuState{C<:AbstractArray{Complex128,1}} <: AbstractQuState
+	elem::C				# container for coefficients
 	nb::Int				# (total) number of basis functions
 	subnb::Vector{Int} 	# number of basis functions in each
 						# subspace
 
-	function QuState( elem::AbstractMatrix{Complex128}, subnb::Vector{Int} )
-		nb = size(elem,1) # size of basis
-	    if nb != size(elem,2)
-	        error("expected square matrix")
-	    end
+	function QuState( elem::C, subnb::Vector{Int} )
+		nb = int(sqrt(size(elem,1))) # size of basis
+    if nb*nb != size(elem,1)
+        error("expected square matrix")
+    end
 
 		if prod(subnb) != nb
 			error("subspace size mismatch")
 		end
 
-		new( reshape(elem, nb*nb, 1), nb, subnb )
+		new( elem, nb, subnb )
 	end
 end
 
-QuState( elem::AbstractMatrix{Complex128} ) = QuState(elem, [size(elem,1)])
-QuState( vec::QuStateVec ) = QuState( vec.elem*vec.elem', vec.subnb )
+QuState{C<:AbstractArray{Complex128,1}}( elem::C, subnb::Vector{Int} ) = QuState{C}(elem,subnb)
+QuState( psi::QuStateVec ) = QuState( vec(psi.elem*psi.elem'), psi.subnb )
+
+QuState{M<:AbstractArray{Complex128,2}}( elem::M, subnb::Vector{Int}=[size(elem,1)] ) = QuState(vec(elem), subnb)
 
 # copy states and state vectors
-copy( vec::QuStateVec ) = QuStateVec( copy(vec.elem), copy(vec.subnb) )
-copy( rho::QuState ) = QuState( reshape(copy(rho.elem), rho.nb, rho.nb), copy(rho.subnb) )
+copy( psi::QuStateVec ) = QuStateVec( copy(psi.elem), copy(psi.subnb) )
+copy( rho::QuState ) = QuState( copy(rho.elem), copy(rho.subnb) )
 
 
 # access to state matrix elements
@@ -143,7 +146,7 @@ function +(rho1::QuState, rho2::QuState)
 		error("Quantum states are not compatible and cannot be added.")
 	end
 
-	QuState( (rho1.elem+rho2.elem), copy(rho1.subnb) )
+	QuState( (rho1.elem+rho2.elem),copy(rho1.subnb) )
 end
 
 function -(vec1::QuStateVec, vec2::QuStateVec)
@@ -208,11 +211,11 @@ end
 
 
 ###############################################################################
-# (sparse) vector representation of a fock state vector
+# vector representation of a fock state vector
 #
 function fockstatevec( nb::Int, n::Int )
 
-	return QuStateVec( sparsevec( [n], [Complex(1.)], nb ) )
+	return QuStateVec( full(sparsevec( [n], [complex(1.)], nb ))[:] )
 
 end
 
@@ -233,7 +236,7 @@ end
 #
 function norm( vec::QuStateVec )
 
-	return vecnorm( vec.elem )
+	return norm( vec.elem )
 end
 
 function norm( rho::QuState )
@@ -309,7 +312,7 @@ function ptrace(rho::QuState, osub::Vector{Int})
 	# the latter are flattened into one dimension, which can be summed over
 	perm = nsub+1 .- [keep[end:-1:1]; (keep[end:-1:1].-nsub); osub; (osub.-nsub)]
 	x = reshape( permutedims( reshape( full(rho.elem), tuple([rsubnb, rsubnb]...)), perm), (nkeep,nkeep,nout^2))
-	return QuState( sparse( squeeze( sum( x[ :,:, [1:nout+1:nout^2]], 3), 3)), rho.subnb[keep] )
+	return QuState( squeeze( sum( x[ :,:, [1:nout+1:nout^2]], 3), 3), rho.subnb[keep] )
 end
 
 function ptrace(vec::QuStateVec, osub::Vector{Int})
@@ -345,7 +348,7 @@ function ptranspose(rho::QuState, sub::Int)
 	perm = [1:2*nsub]
 	perm[(nsub+1-sub)], perm[(2*nsub+1-sub)] = perm[(2*nsub+1-sub)], perm[(nsub+1-sub)]
 	x = reshape( permutedims( reshape( full(rho.elem), tuple([rsubnb rsubnb]...) ), perm), rho.nb, rho.nb)
-	return QuState( sparse(x), rho.subnb )
+	return QuState( x, rho.subnb )
 end
 
 # negativity gives a measure of entanglement
@@ -384,7 +387,7 @@ function normalize( rho::QuState )
 end
 
 function normalize!( vec::QuStateVec )
-	scale!( vec.elem, 1/sqrt( (vec.elem'*vec.elem)[1] ) )
+	scale!( vec.elem, 1/norm(vec) )
 	return vec
 end
 
