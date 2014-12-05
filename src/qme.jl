@@ -1,7 +1,7 @@
 ## QuDOS
 ## interface for quantum master equations
 
-# 
+#
 include("nulls.jl")
 
 # abstract super-type for all QMEs
@@ -49,6 +49,10 @@ function eff_hamiltonian(qme::AbstractLindbladQME)
 
     return heff
 end
+
+# return Lindblad operators
+linbladops(qme::AbstractLindbladQME) = qme.lbops
+
 
 # find stationary state, starting from rho
 # TODO: for some Lindblad ops this doesn't converge
