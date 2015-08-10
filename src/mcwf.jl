@@ -61,96 +61,105 @@ function mcwfpropagate(state::AbstractQuState,
                         ntraj::Int, dt0::Float64, nsteps::Int,
                         ops=[])
 
-  jtol = 1.e-6  # jump tolerance
+    jtol = 1.e-6  # jump tolerance
 
-  nops = length(ops)
-  if nops > 0
-    exvals = Array(Complex128, nsteps, nops)
-  else
-    exvals = []
-  end
+    nops = length(ops)
+    if nops > 0
+        exvals = Array(Complex128, nsteps, nops)
+        fill!(exvals, 0. + im*0.)
+    else
+        exvals = []
+    end
 
-  # get information of QME
-  heff = eff_hamiltonian(qme)
-  c = linbladops(qme)
+    # get information of QME
+    heff = eff_hamiltonian(qme)
+    c = linbladops(qme)
 
-  # final state
-  rho = QuState( zeros(Complex128, state.nb, state.nb), state.subnb )
+    # final state
+    rho = QuState( zeros(Complex128, state.nb, state.nb), state.subnb )
 
-  # initial state -> ensemble
-  qse = QuStateEnsemble(state)
+    # initial state -> ensemble
+    qse = QuStateEnsemble(state)
 
-  for traj=1:ntraj
-	  println("starting trajectory $traj/$ntraj")
+    for traj=1:ntraj
+	    println("-- starting trajectory $traj/$ntraj")
+        t = 0.
 
-    # initial state vec for trajectory
-	  psi  = draw(qse)
+        # initial state vec for trajectory
+	    psi  = draw(qse)
 
-    eps = rand() # draw random number from [0,1)
+        eps = rand() # draw random number from [0,1)
 
-	  for step=1:nsteps
+	    for step=1:nsteps
 
-		  dt = dt0
-		  accdt = 0.
-      tj = 0.
+		    dt = dt0
+		    accdt = 0.
+            tj = 0.
 
-		  while accdt < dt0
+		    while accdt < dt0
 
-			  # propagate one time-step
-			  eff_prop = QuFixedStepPropagator( -im*heff, dt)
-			  psi1 = propagate(eff_prop, psi)
+			    # propagate one time-step
+			    eff_prop = QuFixedStepPropagator( -im*heff, dt)
+			    psi1 = propagate(eff_prop, psi)
 
-    		if abs(norm(psi1) - eps) < jtol
-    			println("jump at t=$(tj + accdt + dt), norm=$(norm(psi1)), eps=$eps")
+                if norm(psi1)^2 > eps + jtol/2
+    			    psi = copy(psi1)  # no jump
+    			    accdt = accdt + dt
+    			    dt = dt0 - accdt    # try to propagate for the remainder of the
+                                        # time step
 
-    			PnS = 0.
-    			for cind = 1:length(c)
-    				PnS += real(expectationval(psi1, c[cind]'*c[cind]))
-    		  end
+    		    elseif norm(psi1)^2 < eps - jtol/2
+    			    dt = dt/2		# jump in the current interval
 
-          Pn = 0.
-    			cop = speye(size(heff,1))
-    			for cind = 1:length(c)
-    				Pn += real(expectationval(psi1, c[cind]'*c[cind]))/PnS
-    				println("Pn($cind)=$Pn")
-    				if Pn >= eps
-    					println("using operator $cind")
-    					cop=c[cind]
-    					break
-    				end
-    			end
+                else
+    			    println("jump at t=$(tj + accdt + dt), norm^2=$(norm(psi1)^2), eps=$eps")
 
-          # now we have a jump
-          # psi = QuStateVec( cop*psi1.elem )
-          psi = applyop(psi1, cop)
-    			normalize!(psi)
+    			    PnS = 0.
+    			    for cind = 1:length(c)
+    				    PnS += real(expectationval(psi1, c[cind]'*c[cind]))
+    		        end
+                    println("jump at t=$(tj + accdt + dt), 1-norm=$(1-norm(psi1)), PnS=$PnS")
 
-    			eps = rand() # draw new random number from [0,1)
-    			accdt = accdt + dt
-    			dt = dt0 - accdt
+                    Pn = 0.
+    			    cop = speye(size(heff,1))
+    			    for cind = 1:length(c)
+    				    Pn += real(expectationval(psi1, c[cind]'*c[cind]))/PnS
+    				    println("Pn($cind)=$Pn")
 
-    		elseif norm(psi1) < eps
-    			dt = dt/2		# jump in the current interval
-    		else
-    			psi = copy(psi1)  # no jump
-    			accdt = accdt + dt
-    			dt = dt0 - accdt
-    		end
+    				    if Pn >= eps
+    					    println("using operator $cind")
+    					    cop=c[cind]
+    					    break
+    				    end
+    			    end
 
-    		println("dt = $dt, norm = $(norm(psi1)), $(norm(psi))")
-    	end
+                    # now we have a jump
+                    psi = applyop(psi1, cop)
+    			    normalize!(psi)
 
-      for nop = 1:nops
-        exvals[step, nop] = exvals[step, nop] + expectationval(normalize(psi), ops[nop])/ntraj
-      end
+    			    eps = rand() # draw new random number from [0,1)
+    			    accdt = accdt + dt
+    			    dt = dt0 - accdt
+    		    end
 
-    	tj = tj + dt0
-    end # time-steps
+    		    println("dt = $(accdt+dt), norm = $(norm(psi1)), $(norm(psi))")
+    	    end
 
-    normalize!(psi)
-    rho = rho + QuState(psi)/ntraj
+            for nop = 1:nops
+                exvals[step, nop] = exvals[step, nop] + expectationval(normalize(psi), ops[nop])/ntraj
+            end
 
-  end  # trajectories
+    	    tj = tj + dt0
 
-  return rho, exvals
+            t = t + accdt
+            println("== t = $(t), norm = $(norm(psi))")
+
+        end # time-steps
+
+        normalize!(psi)
+        rho = rho + QuState(psi)/ntraj
+
+      end  # trajectories
+
+      return rho, exvals
 end
